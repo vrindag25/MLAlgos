@@ -72,7 +72,19 @@ def get_clusters_distplot(data_withclusters, var, label):
     plt.xlabel(var)
     plt.ylabel("Distribution")
 
-#Print for all variables 
+###############################Execution###############################
+# Get clusters
+data_withclusters = get_clusters(data, 
+                                 num_clusters=num_clusters, 
+                                 var_list=var_list)
+
+#Basic decriptives of clusters
+data_withclusters.groupby([kmeans_cluster_label])[var_list].mean().reset_index()
+
+#Print Elbow curve
+get_elbowcurve(data, var_list)
+
+#Distribution plot of Clusters 
 for var in var_list:
     plt.figure()
     get_clusters_distplot(data_withclusters,
