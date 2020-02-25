@@ -53,3 +53,28 @@ def get_clusters(data, num_clusters, var_list):
     plt.xlabel("Number of cluster")
     plt.ylabel("SSE")
     plt.show()
+
+#Visualisation of Clusters
+def get_clusters_distplot(data_withclusters, var, label):
+      
+    # Sort the dataframe by target
+    target_0 = data_withclusters.loc[data_withclusters[target] == 0]
+    target_1 = data_withclusters.loc[data_withclusters[target] == 1]
+    target_2 = data_withclusters.loc[data_withclusters[target] == 2]
+    target_3 = data_withclusters.loc[data_withclusters[target] == 3]
+
+
+    sns.distplot(target_0[[var]], hist=False, rug=False, color = 'red')
+    sns.distplot(target_1[[var]], hist=False, rug=False, color = 'green')
+    sns.distplot(target_2[[var]], hist=False, rug=False, color = 'blue')
+    sns.distplot(target_3[[var]], hist=False, rug=False, color = 'yellow')
+    
+    plt.xlabel(var)
+    plt.ylabel("Distribution")
+
+#Print for all variables 
+for var in var_list:
+    plt.figure()
+    get_clusters_distplot(data_withclusters,
+                          label= kmeans_cluster_label, 
+                          var = var)
