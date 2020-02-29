@@ -30,6 +30,32 @@ def undersample_train_test_split(X_train, y_train, method, randnum):
     elif method == 'default':
         return(X_train, y_train)
     
+###################### Random Forest ######################
+rf_model = RandomForestClassifier(criterion = 'entropy', max_features = None)
+
+#KFold Stratified Sampling
+folds = 3
+skf = StratifiedKFold(n_splits= folds, shuffle = True, random_state = 1337)
+
+params = [{'n_estimators': [50,100],
+      'max_depth': [4,5,6],
+      'min_samples_leaf': [1,2,5]
+     }]
+random_search = GridSearchCV(rf_model,
+                             param_grid= params,
+                             scoring = 'roc_auc',
+                             cv = skf.split(X, y))
+#     params = {'n_estimators': [100],'max_depth': [4,5,6],
+#               'min_samples_leaf': [1,2,5]}
+#     random_search = RandomizedSearchCV(rf_model, param_distributions = params,
+#                                       scoring = 'f1_weighted',
+#                                       cv = skf.split(X_train, y_train))
+
+random_search.fit(X,y)
+best_estimators_model = random_search.best_estimator_
+print(best_estimators_model,
+      random_search.best_score_)
+
 #################### Light GBM ##############################################
 lightgb_model = LGBMClassifier()
 # A parameter grid for LGBMClassifier
@@ -70,6 +96,39 @@ print(feature_importances)
 ##################### SHAP ##########################
 explainer = shap.TreeExplainer(lightgb_fit)
 shap_values = explainer.shap_values(X)
+
+shap_values_df = pd.DataFrame(shap_values[0]) # shap_values_df = shap_values_df.abs()
+shap_values_df.columns = X.columns
+
+top_shap_df = pd.DataFrame() #pd.DataFrame(index = df['account_id'])
+for row in range(shap_values_df.shape[0]):
+    row_list = pd.DataFrame(pd.DataFrame(np.argsort(-shap_values_df.values, axis=1)[row]).T)
+    top_shap_df = top_shap_df.append(row_list)
+
+top_shap_df.index =  df['ID']
+top_shap_df.reset_index(inplace=True)
+shap_values_df['ID'] = df['ID']
+shap_values_df = shap_values_df.set_index('ID')
+shap_values_df.reset_index(inplace = True)
+shap_values_df.iloc[:1, :].T.reset_index()[1:].sort_values(by = 0, ascending = False)[:5]
+
+shap_values_df_long = shap_values_df.melt(id_vars = 'account_id', var_name= 'Feature_Name', value_name='Shap_Val')
+feature_mean = pd.DataFrame(X.mean()).reset_index()
+feature_mean.columns = ['Feature_Name', 'National_Mean']
+
+#Index of Feature Name
+feature_idx = pd.DataFrame(list(np.arange(0,shap_values_df.shape[1],1)),shap_values_df.columns).reset_index()
+feature_idx.columns = ['Feature_Name', 'Feature_Index']
+
+top_shap_df_long = top_shap_df.melt(id_vars='account_id', var_name='Feature_Rank', 
+                                    value_name='Feature_Index').sort_values(by =['account_id', 'Feature_Rank']).reset_index().drop(columns = 'index')
+top_shap_df_long = pd.merge(top_shap_df_long, feature_idx, on = 'Feature_Index')
+top_shap_df_long = pd.merge(top_shap_df_long, feature_mean, on = 'Feature_Name')
+top_shap_df_long['Actual_Value'] = df.set_index('account_id').lookup(top_shap_df_long['account_id'],
+                                                                     top_shap_df_long['Feature_Name'])
+top_shap_df_long
+###################################################
+
 # summarize the effects of all the features
 shap_sum = np.abs(shap_values).mean(axis=0)
 importance_df = pd.DataFrame([X.columns.tolist(), shap_sum.tolist()]).T
