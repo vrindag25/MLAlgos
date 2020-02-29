@@ -56,6 +56,39 @@ best_estimators_model = random_search.best_estimator_
 print(best_estimators_model,
       random_search.best_score_)
 
+########################XGB#################################
+X_train_us, y_train_us = undersample_train_test_split(X_train, y_train, 'ClusterCentroids', randnums[i])
+
+# fit model no training data
+xgb_model = XGBClassifier(learning_rate =0.01,
+                        n_estimators=700,
+                        max_depth=6,
+                        min_child_weight=6,
+                        gamma=0,
+                        subsample=0.7,
+                        colsample_bytree=0.8,
+                        objective= 'binary:logistic',#'multi:softmax',
+                        nthread=4,
+                        booster='gbtree',#booster='gblinear',
+                        scale_pos_weight=1,
+                        base_score = 0.6, #base_score = 0.5,
+                        eval_metric = 'aucpr',#eval_metric = 'error@0.6',
+                        seed=217)
+
+eval_set = [(X_train_us, y_train_us),
+            (X_test, y_test)]
+
+# Fit Model
+xgb_model.fit(X_train_us, y_train_us.values.ravel(), 
+              early_stopping_rounds=15, 
+              eval_metric=["error", "logloss"], eval_set=eval_set
+              ,verbose=False
+             )
+
+xgb_pred = xgb_model.predict(X_test)
+xgb_pred_prob = xgb_model.predict_proba(X_test)
+########################################################################
+
 #################### Light GBM ##############################################
 lightgb_model = LGBMClassifier()
 # A parameter grid for LGBMClassifier
